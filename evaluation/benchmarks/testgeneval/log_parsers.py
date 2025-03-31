@@ -206,25 +206,25 @@ def parse_log_sympy(log: str) -> dict[str, str]:
     """
     test_status_map = {}
     pattern = r'(_*) (.*)\.py:(.*) (_*)'
-    matches = re.findall(pattern, log)
+    matches = re.finditer(pattern, log)  # Using re.finditer for better efficiency with large logs
+    failed_value = TestStatus.FAILED.value  # Cache the attribute access
     for match in matches:
-        test_case = f'{match[1]}.py:{match[2]}'
-        test_status_map[test_case] = TestStatus.FAILED.value
-    for line in log.split('\n'):
+        test_case = f'{match.group(2)}.py:{match.group(3)}'
+        test_status_map[test_case] = failed_value
+
+    error_value = TestStatus.ERROR.value
+    passed_value = TestStatus.PASSED.value
+    for line in log.splitlines():  # Avoids creating a list just to loop through it
         line = line.strip()
         if line.startswith('test_'):
-            if line.endswith('[FAIL]') or line.endswith('[OK]'):
-                line = line[: line.rfind('[')]
-                line = line.strip()
             if line.endswith(' E'):
-                test = line.split()[0]
-                test_status_map[test] = TestStatus.ERROR.value
-            if line.endswith(' F'):
-                test = line.split()[0]
-                test_status_map[test] = TestStatus.FAILED.value
-            if line.endswith(' ok'):
-                test = line.split()[0]
-                test_status_map[test] = TestStatus.PASSED.value
+                # Use line[:line.rfind(' ')] to avoid split call
+                test_status_map[line[:line.rfind(' ')]] = error_value
+            elif line.endswith(' F'):
+                test_status_map[line[:line.rfind(' ')]] = failed_value
+            elif line.endswith(' ok'):
+                test_status_map[line[:line.rfind(' ')]] = passed_value
+
     return test_status_map
 
 
