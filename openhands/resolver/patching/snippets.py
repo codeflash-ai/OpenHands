@@ -6,6 +6,7 @@ from shutil import rmtree
 
 
 def remove(path: str) -> None:
+    """Remove a file or directory if it exists."""
     if os.path.exists(path):
         if os.path.isdir(path):
             rmtree(path)
@@ -47,6 +48,7 @@ def split_by_regex(items: list[str], regex: re.Pattern[str]) -> list[list[str]]:
 
 # http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
 def which(program: str) -> str | None:
+    """Checks if a program is in the PATH and is executable."""
     def is_exe(fpath: str) -> bool:
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -55,7 +57,7 @@ def which(program: str) -> str | None:
         if is_exe(program):
             return program
     else:
-        for path in os.environ['PATH'].split(os.pathsep):
+        for path in os.environ.get('PATH', '').split(os.pathsep):
             path = path.strip('"')
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
