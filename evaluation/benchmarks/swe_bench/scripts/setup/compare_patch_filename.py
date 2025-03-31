@@ -9,12 +9,13 @@ import re
 
 def extract_modified_files(patch):
     modified_files = set()
-    file_pattern = re.compile(r'^diff --git a/(.*?) b/')
-
-    for line in patch.split('\n'):
-        match = file_pattern.match(line)
-        if match:
-            modified_files.add(match.group(1))
+    lines = patch.split('\n')
+    prefix = 'diff --git a/'
+    for line in lines:
+        if line.startswith(prefix):
+            end_index = line.find(' b/')
+            if end_index != -1:
+                modified_files.add(line[len(prefix):end_index])
 
     return modified_files
 
