@@ -106,20 +106,15 @@ def encode_question(question):
 
 # imported from https://github.com/night-chen/ToolQA/tree/main/benchmark/ReAct/code/agents_chatgpt.py
 def normalize_answer(s):
-    def remove_articles(text):
-        return re.sub(r'\b(a|an|the|usd)\b', ' ', text)
-
-    def white_space_fix(text):
-        return ' '.join(text.split())
-
-    def remove_punc(text):
-        exclude = set(string.punctuation)
-        return ''.join(ch for ch in text if ch not in exclude)
-
-    def lower(text):
-        return text.lower()
-
-    return white_space_fix(remove_articles(remove_punc(lower(s))))
+    # Remove articles and convert to lowercase
+    s = re.sub(r'\b(a|an|the|usd)\b', ' ', s.lower())
+    
+    # Remove punctuation using translation, it is generally faster than list comprehensions
+    translator = str.maketrans('', '', string.punctuation)
+    s = s.translate(translator)
+    
+    # Fix white space
+    return ' '.join(s.split())
 
 
 def eval_answer(pred, answer):
