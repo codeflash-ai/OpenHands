@@ -6,14 +6,19 @@ from collections import defaultdict
 
 def get_likely_indent_size(array_of_tabs) -> int:
     sizes = defaultdict(int)
+    array_len = len(array_of_tabs)  # Store length to avoid recalculating
 
-    for i in range(len(array_of_tabs) - 1):
-        diff = array_of_tabs[i + 1] - array_of_tabs[i]
+    # Iterate through index and value simultaneously using zip, eliminating an explicit index
+    for current, next_val in zip(array_of_tabs, array_of_tabs[1:]):
+        diff = next_val - current
         if diff > 0:
             sizes[diff] += 1
-    if len(sizes) == 0:
+
+    if not sizes:  # Use more Pythonic way to check for empty dictionary
         return 4
-    return int(max(sizes, key=sizes.get))
+
+    # Optimization by using max function on dict items directly
+    return max(sizes, key=sizes.get)
 
 
 def get_target_filepath(self):
