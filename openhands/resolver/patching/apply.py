@@ -67,10 +67,8 @@ def _apply_diff_with_subprocess(
 
 
 def _reverse(changes: list[Change]) -> list[Change]:
-    def _reverse_change(c: Change) -> Change:
-        return c._replace(old=c.new, new=c.old)
-
-    return [_reverse_change(c) for c in changes]
+    # Using list comprehension with in-place swapping is already optimal for this context.
+    return [c._replace(old=c.new, new=c.old) for c in changes]
 
 
 def apply_diff(
