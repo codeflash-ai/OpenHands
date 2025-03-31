@@ -13,15 +13,17 @@ def parse_log_pytest(log: str) -> dict[str, str]:
         dict: test case to test status mapping
     """
     test_status_map = {}
+    statuses = {status.value for status in TestStatus}  # Precompute set of status values for faster lookup
     for line in log.split('\n'):
-        if any([line.startswith(x.value) for x in TestStatus]):
+        line_status = line.partition(' ')[0]
+        if line_status in statuses:
             # Additional parsing for FAILED status
-            if line.startswith(TestStatus.FAILED.value):
+            if line_status == TestStatus.FAILED.value:
                 line = line.replace(' - ', ' ')
             test_case = line.split()
             if len(test_case) <= 1:
                 continue
-            test_status_map[test_case[1]] = test_case[0]
+            test_status_map[test_case[1]] = line_status
     return test_status_map
 
 
