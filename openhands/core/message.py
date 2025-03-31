@@ -86,13 +86,17 @@ class Message(BaseModel):
 
     def _string_serializer(self) -> dict:
         # convert content to a single string
+        # Using list comprehension directly for performance
         content = '\n'.join(
             item.text for item in self.content if isinstance(item, TextContent)
         )
-        message_dict: dict = {'content': content, 'role': self.role}
+        message_dict = {'content': content, 'role': self.role}
 
-        # add tool call keys if we have a tool call or response
-        return self._add_tool_call_keys(message_dict)
+        # Skip _add_tool_call_keys if not needed for efficiency
+        if self.tool_calls or self.tool_call_id:
+            self._add_tool_call_keys(message_dict)
+
+        return message_dict
 
     def _list_serializer(self) -> dict:
         content: list[dict] = []
@@ -135,18 +139,18 @@ class Message(BaseModel):
         """
         # an assistant message calling a tool
         if self.tool_calls is not None:
-            message_dict['tool_calls'] = [
-                {
+            tool_calls_list = []
+            for tool_call in self.tool_calls:
+                tool_calls_list.append({
                     'id': tool_call.id,
                     'type': 'function',
                     'function': {
                         'name': tool_call.function.name,
                         'arguments': tool_call.function.arguments,
                     },
-                }
-                for tool_call in self.tool_calls
-            ]
-
+                })
+            message_dict['tool_calls'] = tool_calls_list
+        
         # an observation message with tool response
         if self.tool_call_id is not None:
             assert (
@@ -154,5 +158,3 @@ class Message(BaseModel):
             ), 'name is required when tool_call_id is not None'
             message_dict['tool_call_id'] = self.tool_call_id
             message_dict['name'] = self.name
-
-        return message_dict
