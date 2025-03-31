@@ -151,21 +151,38 @@ def parse_log_pytest_v2(log: str) -> dict[str, str]:
     """
     test_status_map = {}
     escapes = ''.join([chr(char) for char in range(1, 32)])
+    translator = str.maketrans('', '', escapes)
+    
+    # Precompile the regex pattern to improve performance
+    ansi_escape_re = re.compile(r'\[(\d+)m')
+    
+    # Create sets for fast membership testing
+    start_status_set = {x.value for x in TestStatus}
+    end_status_set = {x.value for x in TestStatus}
+    
     for line in log.split('\n'):
-        line = re.sub(r'\[(\d+)m', '', line)
-        translator = str.maketrans('', '', escapes)
+        # Remove ANSI escape sequences
+        line = ansi_escape_re.sub('', line)
+        
+        # Remove non-printable characters
         line = line.translate(translator)
-        if any([line.startswith(x.value) for x in TestStatus]):
-            if line.startswith(TestStatus.FAILED.value):
+        
+        # Check if line starts with any test status
+        line_start = line.split(' ', 1)[0]
+        if line_start in start_status_set:
+            if line_start == TestStatus.FAILED.value:
                 line = line.replace(' - ', ' ')
             test_case = line.split()
             if len(test_case) >= 2:
                 test_status_map[test_case[1]] = test_case[0]
-        # Support older pytest versions by checking if the line ends with the test status
-        elif any([line.endswith(x.value) for x in TestStatus]):
+        
+        # Check if line ends with any test status (for older versions)
+        line_end = line.rsplit(' ', 1)[-1]
+        if line_end in end_status_set:
             test_case = line.split()
             if len(test_case) >= 2:
                 test_status_map[test_case[0]] = test_case[1]
+
     return test_status_map
 
 
