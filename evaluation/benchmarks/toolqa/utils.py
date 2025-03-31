@@ -101,7 +101,8 @@ IMPORTANT: Make sure that in your final answer, you should not print any additio
 
 
 def encode_question(question):
-    return REACT_INSTRUCTION.format(question=question)
+    # Using f-string for a more efficient string formatting
+    return f"Use tools in the tools directory to solve the task: {question}\nYou could use all tools which are under the tools/ directory and all the data under the data/ directory.\nWhen you think you finished the task, respond with `Finish[answer]` where you include your answer in `[]`.\nIMPORTANT: Make sure that in your final answer, you should not print any additional text/instructions other than the actual answer, which should be a word or a simple phrase.\n"
 
 
 # imported from https://github.com/night-chen/ToolQA/tree/main/benchmark/ReAct/code/agents_chatgpt.py
