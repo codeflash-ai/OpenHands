@@ -73,47 +73,59 @@ def parse_log_django(log: str) -> dict[str, str]:
     lines = log.split('\n')
 
     prev_test = None
+    # Pre-compile regular expressions for performance
+    version_pattern = re.compile(r'--version is equivalent to version.*')
+    multiline_exceptions = re.compile(
+        r'^(.*?)\s\.\.\.\s(?:Testing\ against\ Django\ installed\ in\ |Internal\ Server\ Error:\ \/|System check identified no issues \(0 silenced\)\)\/?)((?s:.*?))\.ok$')
+    
     for line in lines:
         line = line.strip()
 
         # This isn't ideal but the test output spans multiple lines
-        if '--version is equivalent to version' in line:
+        if version_pattern.match(line):
             test_status_map['--version is equivalent to version'] = (
                 TestStatus.PASSED.value
             )
+            continue
 
-        # Log it in case of error
         if ' ... ' in line:
             prev_test = line.split(' ... ')[0]
 
-        pass_suffixes = (' ... ok', ' ... OK', ' ...  OK')
-        for suffix in pass_suffixes:
-            if line.endswith(suffix):
-                # TODO: Temporary, exclusive fix for django__django-7188
-                # The proper fix should involve somehow getting the test results to
-                # print on a separate line, rather than the same line
-                if line.strip().startswith(
-                    'Applying sites.0002_alter_domain_unique...test_no_migrations'
-                ):
-                    line = line.split('...', 1)[-1].strip()
-                test = line.rsplit(suffix, 1)[0]
-                test_status_map[test] = TestStatus.PASSED.value
-                break
-        if ' ... skipped' in line:
+        # Check suffix in order of likelihood
+        if line.endswith(' ... ok') or line.endswith(' ... OK') or line.endswith(' ...  OK'):
+            # Temporary, exclusive fix for django__django-7188
+            if line.strip().startswith(
+                'Applying sites.0002_alter_domain_unique...test_no_migrations'
+            ):
+                line = line.split('...', 1)[-1].strip()
+            test = line.rsplit(' ... ', 1)[0]
+            test_status_map[test] = TestStatus.PASSED.value
+            continue
+            
+        if line.endswith(' ... skipped'):
             test = line.split(' ... skipped')[0]
             test_status_map[test] = TestStatus.SKIPPED.value
+            continue
+            
         if line.endswith(' ... FAIL'):
             test = line.split(' ... FAIL')[0]
             test_status_map[test] = TestStatus.FAILED.value
+            continue
+            
         if line.startswith('FAIL:'):
             test = line.split()[1].strip()
             test_status_map[test] = TestStatus.FAILED.value
+            continue
+            
         if line.endswith(' ... ERROR'):
             test = line.split(' ... ERROR')[0]
             test_status_map[test] = TestStatus.ERROR.value
+            continue
+
         if line.startswith('ERROR:'):
             test = line.split()[1].strip()
             test_status_map[test] = TestStatus.ERROR.value
+            continue
 
         if line.lstrip().startswith('ok') and prev_test is not None:
             # It means the test passed, but there's some additional output (including new lines)
@@ -121,22 +133,11 @@ def parse_log_django(log: str) -> dict[str, str]:
             test = prev_test
             test_status_map[test] = TestStatus.PASSED.value
 
-    # TODO: This is very brittle, we should do better
-    # There's a bug in the django logger, such that sometimes a test output near the end gets
-    # interrupted by a particular long multiline print statement.
-    # We have observed this in one of 3 forms:
-    # - "{test_name} ... Testing against Django installed in {*} silenced.\nok"
-    # - "{test_name} ... Internal Server Error: \/(.*)\/\nok"
-    # - "{test_name} ... System check identified no issues (0 silenced).\nok"
-    patterns = [
-        r'^(.*?)\s\.\.\.\sTesting\ against\ Django\ installed\ in\ ((?s:.*?))\ silenced\)\.\nok$',
-        r'^(.*?)\s\.\.\.\sInternal\ Server\ Error:\ \/(.*)\/\nok$',
-        r'^(.*?)\s\.\.\.\sSystem check identified no issues \(0 silenced\)\nok$',
-    ]
-    for pattern in patterns:
-        for match in re.finditer(pattern, log, re.MULTILINE):
-            test_name = match.group(1)
-            test_status_map[test_name] = TestStatus.PASSED.value
+    # Handling multiline log patterns
+    for match in multiline_exceptions.finditer(log):
+        test_name = match.group(1)
+        test_status_map[test_name] = TestStatus.PASSED.value
+
     return test_status_map
 
 
