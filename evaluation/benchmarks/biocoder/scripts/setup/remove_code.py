@@ -1,5 +1,4 @@
 import argparse
-import os
 import re
 from collections import defaultdict
 
@@ -17,12 +16,10 @@ def get_likely_indent_size(array_of_tabs) -> int:
 
 
 def get_target_filepath(self):
-    target_filepath = os.path.join(
-        self.workspace_mount_path,
-        self.biocoder_instance.repository.split('/')[1],
-        self.biocoder_instance.filePath,
-    )
-    return target_filepath
+    # Using string concatenation and intermediate variables to enhance speed slightly
+    repo_name = self.biocoder_instance.repository.split('/')[1]
+    file_path = self.biocoder_instance.filePath
+    return f"{self.workspace_mount_path}/{repo_name}/{file_path}"
 
 
 def remove_code(target_filepath: str, line_start: int, line_end: int, language: str):
