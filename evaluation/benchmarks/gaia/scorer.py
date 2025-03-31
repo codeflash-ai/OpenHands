@@ -1,6 +1,7 @@
 import re
 import string
 import warnings
+from functools import lru_cache
 
 
 def normalize_number_str(number_str: str) -> float:
@@ -21,8 +22,10 @@ def split_string(
 ) -> list[str]:
     if char_list is None:
         char_list = [',', ';']
-    pattern = f"[{''.join(char_list)}]"
-    return re.split(pattern, s)
+    
+    # Convert list to tuple to use it as input for lru_cache.
+    pattern = compile_pattern(tuple(char_list))
+    return pattern.split(s)
 
 
 def question_scorer(
@@ -100,3 +103,9 @@ def normalize_str(input_str, remove_punct=True) -> str:
         return no_spaces.lower().translate(translator)
     else:
         return no_spaces.lower()
+
+
+@lru_cache(maxsize=None)
+def compile_pattern(char_list: tuple[str]) -> re.Pattern:
+    pattern = f"[{''.join(char_list)}]"
+    return re.compile(pattern)
