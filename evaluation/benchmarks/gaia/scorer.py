@@ -91,12 +91,12 @@ def normalize_str(input_str, remove_punct=True) -> str:
     Returns:
     - str, the normalized string
     """
-    # Remove all white spaces. Required e.g for seagull vs. sea gull
-    no_spaces = re.sub(r'\s', '', input_str)
+    # Remove all white spaces and convert to lowercase.
+    normalized = ''.join(input_str.split()).lower()
 
     # Remove punctuation, if specified.
     if remove_punct:
         translator = str.maketrans('', '', string.punctuation)
-        return no_spaces.lower().translate(translator)
-    else:
-        return no_spaces.lower()
+        normalized = normalized.translate(translator)
+    
+    return normalized
