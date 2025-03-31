@@ -3,6 +3,7 @@
 import os.path
 import subprocess
 import tempfile
+from contextlib import ExitStack
 
 from .exceptions import HunkApplyException, SubprocessException
 from .patch import Change, diffobj
@@ -12,54 +13,58 @@ from .snippets import remove, which
 def _apply_diff_with_subprocess(
     diff: diffobj, lines: list[str], reverse: bool = False
 ) -> tuple[list[str], list[str] | None]:
-    # call out to patch program
+    """Applies a diff to a list of lines."""
+    # Find the `patch` executable in the system path
     patchexec = which('patch')
     if not patchexec:
         raise SubprocessException('cannot find patch program', code=-1)
 
     tempdir = tempfile.gettempdir()
 
-    filepath = os.path.join(tempdir, 'wtp-' + str(hash(diff.header)))
-    oldfilepath = filepath + '.old'
-    newfilepath = filepath + '.new'
-    rejfilepath = filepath + '.rej'
-    patchfilepath = filepath + '.patch'
-    with open(oldfilepath, 'w') as f:
-        f.write('\n'.join(lines) + '\n')
+    # Create temporary file paths
+    filepath_base = os.path.join(tempdir, 'wtp-' + str(hash(diff.header)))
+    oldfilepath = filepath_base + '.old'
+    newfilepath = filepath_base + '.new'
+    rejfilepath = filepath_base + '.rej'
+    patchfilepath = filepath_base + '.patch'
 
-    with open(patchfilepath, 'w') as f:
-        f.write(diff.text)
+    with ExitStack() as stack:
+        oldfile = stack.enter_context(open(oldfilepath, 'w'))
+        patchfile = stack.enter_context(open(patchfilepath, 'w'))
 
-    args = [
-        patchexec,
-        '--reverse' if reverse else '--forward',
-        '--quiet',
-        '--no-backup-if-mismatch',
-        '-o',
-        newfilepath,
-        '-i',
-        patchfilepath,
-        '-r',
-        rejfilepath,
-        oldfilepath,
-    ]
-    ret = subprocess.call(args)
+        oldfile.write('\n'.join(lines) + '\n')
+        patchfile.write(diff.text)
 
-    with open(newfilepath) as f:
-        lines = f.read().splitlines()
+        args = [
+            patchexec,
+            '--reverse' if reverse else '--forward',
+            '--quiet',
+            '--no-backup-if-mismatch',
+            '-o',
+            newfilepath,
+            '-i',
+            patchfilepath,
+            '-r',
+            rejfilepath,
+            oldfilepath,
+        ]
+        
+        ret = subprocess.call(args)
 
-    try:
-        with open(rejfilepath) as f:
-            rejlines = f.read().splitlines()
-    except IOError:
-        rejlines = None
+        # Read new file content
+        with open(newfilepath) as newfile:
+            lines = newfile.read().splitlines()
 
-    remove(oldfilepath)
-    remove(newfilepath)
-    remove(rejfilepath)
-    remove(patchfilepath)
+        try:
+            with open(rejfilepath) as rejfile:
+                rejlines = rejfile.read().splitlines()
+        except IOError:
+            rejlines = None
 
-    # do this last to ensure files get cleaned up
+    # Clean up temporary files
+    map(remove, [oldfilepath, newfilepath, rejfilepath, patchfilepath])
+
+    # Ensure all files are cleaned up before raising an exception
     if ret != 0:
         raise SubprocessException('patch program failed', code=ret)
 
