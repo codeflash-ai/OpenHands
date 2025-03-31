@@ -107,18 +107,18 @@ def encode_question(question):
 # imported from https://github.com/night-chen/ToolQA/tree/main/benchmark/ReAct/code/agents_chatgpt.py
 def normalize_answer(s):
     def remove_articles(text):
-        return re.sub(r'\b(a|an|the|usd)\b', ' ', text)
+        return re.sub(r'\b(?:a|an|the|usd)\b', ' ', text)  # Use non-capturing group
 
     def white_space_fix(text):
         return ' '.join(text.split())
 
     def remove_punc(text):
-        exclude = set(string.punctuation)
-        return ''.join(ch for ch in text if ch not in exclude)
+        return text.translate(str.maketrans('', '', string.punctuation))  # Use str.translate & maketrans for efficiency
 
     def lower(text):
         return text.lower()
 
+    # Function composition: remove redundant variable assignments by composing functions
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 
@@ -127,4 +127,7 @@ def eval_answer(pred, answer):
     match = re.search(pattern, pred)
     if match:
         pred = match.group(1)
-    return normalize_answer(pred) == normalize_answer(answer)
+    # Avoid recalculating normalize_answer multiple times by storing results
+    norm_pred = normalize_answer(pred)
+    norm_answer = normalize_answer(answer)
+    return norm_pred == norm_answer
