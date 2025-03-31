@@ -230,25 +230,33 @@ def parse_log_sympy(log: str) -> dict[str, str]:
 
 def parse_log_matplotlib(log: str) -> dict[str, str]:
     """
-    Parser for test logs generated with PyTest framework
+    Optimized parser for test logs generated with PyTest framework
 
     Args:
         log (str): log content
     Returns:
         dict: test case to test status mapping
     """
+    # Create a dictionary for lookup to avoid repetitive startswith calls
+    status_values = {x.value: x.value for x in TestStatus}
     test_status_map = {}
+
     for line in log.split('\n'):
-        line = line.replace('MouseButton.LEFT', '1')
-        line = line.replace('MouseButton.RIGHT', '3')
-        if any([line.startswith(x.value) for x in TestStatus]):
-            # Additional parsing for FAILED status
-            if line.startswith(TestStatus.FAILED.value):
-                line = line.replace(' - ', ' ')
-            test_case = line.split()
-            if len(test_case) <= 1:
-                continue
-            test_status_map[test_case[1]] = test_case[0]
+        # Use replace function only if necessary to reduce unnecessary operations
+        if 'MouseButton.LEFT' in line or 'MouseButton.RIGHT' in line:
+            line = line.replace('MouseButton.LEFT', '1').replace('MouseButton.RIGHT', '3')
+        
+        # Check if line starts with any TestStatus value
+        for status in status_values:
+            if line.startswith(status):
+                # Additional parsing for FAILED status
+                if status == TestStatus.FAILED.value:
+                    line = line.replace(' - ', ' ')
+
+                test_case = line.split()
+                if len(test_case) > 1:
+                    test_status_map[test_case[1]] = status
+                break  # Exit the loop once match is found, optimizing performance
     return test_status_map
 
 
