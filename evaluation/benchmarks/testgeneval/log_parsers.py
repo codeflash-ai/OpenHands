@@ -36,27 +36,34 @@ def parse_log_pytest_options(log: str) -> dict[str, str]:
     """
     option_pattern = re.compile(r'(.*?)\[(.*)\]')
     test_status_map = {}
+    test_status_values = {status.value for status in TestStatus}
+
     for line in log.split('\n'):
-        if any([line.startswith(x.value) for x in TestStatus]):
+        # Check for valid starting status using a set for O(1) look-up
+        line_status = line.split()[0] if line else None
+        if line_status in test_status_values:
             # Additional parsing for FAILED status
-            if line.startswith(TestStatus.FAILED.value):
+            if line_status == TestStatus.FAILED.value:
                 line = line.replace(' - ', ' ')
             test_case = line.split()
             if len(test_case) <= 1:
                 continue
-            has_option = option_pattern.search(test_case[1])
-            if has_option:
-                main, option = has_option.groups()
+            # Directly match and extract using regex
+            match = option_pattern.match(test_case[1])
+            if match:
+                main, option = match.groups()
                 if (
                     option.startswith('/')
                     and not option.startswith('//')
                     and '*' not in option
                 ):
+                    # Simplified since if it doesn't start with '//' and there's no '*'
                     option = '/' + option.split('/')[-1]
                 test_name = f'{main}[{option}]'
             else:
                 test_name = test_case[1]
             test_status_map[test_name] = test_case[0]
+
     return test_status_map
 
 
