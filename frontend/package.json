@@ -80,7 +80,7 @@
   },
   "devDependencies": {
     "@mswjs/socket.io-binding": "^0.1.1",
-    "@playwright/test": "^1.51.1",
+    "@playwright/test": "^1.56.1",
     "@react-router/dev": "^7.4.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/eslint-plugin-query": "^5.68.0",
